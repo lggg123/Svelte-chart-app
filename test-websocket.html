@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test - Pattern Detection API</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #0a0a0a;
+            color: #22c55e;
+            padding: 20px;
+        }
+        .log {
+            margin: 10px 0;
+            padding: 10px;
+            background: #1a1a1a;
+            border-left: 3px solid #3b82f6;
+        }
+        .error { border-left-color: #ef4444; color: #ef4444; }
+        .success { border-left-color: #22c55e; color: #22c55e; }
+        .info { border-left-color: #fbbf24; color: #fbbf24; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover { background: #2563eb; }
+    </style>
+</head>
+<body>
+    <h1>🔌 WebSocket Connection Test</h1>
+    <p>Testing: <strong>wss://virtual-options-desk-production.up.railway.app/ws/live/AAPL?timeframe=1d</strong></p>
+    
+    <button onclick="connect()">Connect</button>
+    <button onclick="disconnect()">Disconnect</button>
+    <button onclick="clearLogs()">Clear Logs</button>
+    
+    <div id="logs"></div>
+    
+    <script>
+        let ws = null;
+        let messageCount = 0;
+        
+        function log(message, type = 'info') {
+            const logDiv = document.createElement('div');
+            logDiv.className = `log ${type}`;
+            logDiv.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
+            document.getElementById('logs').prepend(logDiv);
+            console.log(message);
+        }
+        
+        function connect() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                log('Already connected!', 'info');
+                return;
+            }
+            
+            const url = 'wss://virtual-options-desk-production.up.railway.app/ws/live/AAPL?timeframe=1d';
+            log(`🔄 Connecting to: ${url}`, 'info');
+            
+            try {
+                ws = new WebSocket(url);
+                
+                ws.onopen = () => {
+                    log('✅ WebSocket CONNECTED successfully!', 'success');
+                    log('Waiting for historical data...', 'info');
+                };
+                
+                ws.onmessage = (event) => {
+                    messageCount++;
+                    try {
+                        const data = JSON.parse(event.data);
+                        log(`📨 Message #${messageCount} - Type: ${data.type}`, 'success');
+                        
+                        if (data.type === 'historical') {
+                            log(`   📊 Received ${data.data.length} historical candles`, 'info');
+                            log(`   First candle: ${JSON.stringify(data.data[0]).substring(0, 100)}...`, 'info');
+                        } else if (data.type === 'candle_update') {
+                            log(`   💹 New candle: ${data.data.close} at ${data.data.timestamp}`, 'info');
+                        } else if (data.type === 'pattern_detected') {
+                            log(`   🎯 Pattern detected: ${data.data.pattern_type} (${data.data.direction})`, 'success');
+                        } else if (data.type === 'heartbeat') {
+                            log(`   💓 Heartbeat received`, 'info');
+                        }
+                    } catch (err) {
+                        log(`❌ Failed to parse message: ${err.message}`, 'error');
+                        log(`   Raw data: ${event.data}`, 'error');
+                    }
+                };
+                
+                ws.onerror = (error) => {
+                    log(`❌ WebSocket ERROR: ${JSON.stringify(error)}`, 'error');
+                    log(`   Error object: ${error.toString()}`, 'error');
+                    log(`   Error type: ${error.type}`, 'error');
+                };
+                
+                ws.onclose = (event) => {
+                    log(`🔴 WebSocket CLOSED`, 'error');
+                    log(`   Code: ${event.code}`, 'error');
+                    log(`   Reason: ${event.reason || 'No reason provided'}`, 'error');
+                    log(`   Clean close: ${event.wasClean}`, 'error');
+                    messageCount = 0;
+                };
+                
+            } catch (err) {
+                log(`❌ Failed to create WebSocket: ${err.message}`, 'error');
+            }
+        }
+        
+        function disconnect() {
+            if (ws) {
+                log('🔌 Disconnecting...', 'info');
+                ws.close();
+                ws = null;
+            } else {
+                log('No active connection', 'info');
+            }
+        }
+        
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+            log('Logs cleared', 'info');
+        }
+        
+        // Auto-connect on load
+        setTimeout(() => {
+            log('🚀 Auto-connecting in 1 second...', 'info');
+            setTimeout(connect, 1000);
+        }, 100);
+    </script>
+</body>
+</html>
