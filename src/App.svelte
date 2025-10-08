@@ -86,26 +86,17 @@
     </div>
 
 
-    {#if !isMobile}
-      <!-- Chart controls above chart for desktop/tablet -->
-      <ChartControls 
-        bind:showVolume 
-        bind:showMA 
-      />
-    {/if}
+    <!-- Chart controls: timeframe always above, indicators below on mobile -->
+    <ChartControls 
+      bind:showVolume 
+      bind:showMA 
+      indicatorsBelow={isMobile}
+    />
 
     <!-- Main chart -->
     <div class="chart-container">
       <CandlestickChart width={chartWidth} height={chartHeight} />
     </div>
-
-    {#if isMobile}
-      <!-- Chart controls below chart for mobile -->
-      <ChartControls 
-        bind:showVolume 
-        bind:showMA 
-      />
-    {/if}
 
     <!-- Patterns list -->
     <PatternsList />

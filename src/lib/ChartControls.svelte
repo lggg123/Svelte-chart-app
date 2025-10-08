@@ -13,6 +13,7 @@
 
   export let showVolume = true;
   export let showMA = false;
+  export let indicatorsBelow = false;
 
   function handleTimeframeChange(tf) {
     selectedTimeframe.set(tf);
@@ -33,8 +34,23 @@
     {/each}
   </div>
 
-  <!-- Indicator toggles -->
-  <div class="indicators">
+  {#if !indicatorsBelow}
+    <!-- Indicator toggles (default position) -->
+    <div class="indicators">
+      <label>
+        <input type="checkbox" bind:checked={showVolume} />
+        Volume
+      </label>
+      <label>
+        <input type="checkbox" bind:checked={showMA} />
+        Moving Averages
+      </label>
+    </div>
+  {/if}
+</div>
+
+{#if indicatorsBelow}
+  <div class="indicators indicators-below">
     <label>
       <input type="checkbox" bind:checked={showVolume} />
       Volume
@@ -44,7 +60,7 @@
       Moving Averages
     </label>
   </div>
-</div>
+{/if}
 
 <style>
   .controls {
@@ -85,6 +101,31 @@
   .indicators {
     display: flex;
     gap: 1rem;
+  }
+
+  @media (max-width: 600px) {
+    .controls {
+      flex-direction: column;
+      align-items: stretch;
+      padding: 0.5rem;
+    }
+    .indicators {
+      gap: 0.5rem;
+      font-size: 0.9rem;
+    }
+    .indicators-below {
+      margin-top: 0.5rem;
+      margin-bottom: 0.5rem;
+      justify-content: flex-start;
+    }
+    label {
+      font-size: 0.9rem;
+      gap: 0.3rem;
+    }
+    input[type="checkbox"] {
+      width: 1rem;
+      height: 1rem;
+    }
   }
 
   label {
