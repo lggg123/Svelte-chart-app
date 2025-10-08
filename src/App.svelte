@@ -9,11 +9,41 @@
   let showVolume = true;
   let showMA = false;
 
+  // Responsive chart sizing
+  import { onMount, onDestroy } from 'svelte';
+  let chartWidth = 1200;
+  let chartHeight = 600;
+  let resizeHandler;
+  function updateChartSize() {
+    if (typeof window !== 'undefined') {
+      if (window.innerWidth < 600) {
+        chartWidth = window.innerWidth - 32;
+        chartHeight = 260;
+      } else if (window.innerWidth < 900) {
+        chartWidth = window.innerWidth - 64;
+        chartHeight = 340;
+      } else {
+        chartWidth = 1200;
+        chartHeight = 500;
+      }
+    }
+  }
+  onMount(() => {
+    updateChartSize();
+    resizeHandler = () => updateChartSize();
+    window.addEventListener('resize', resizeHandler);
+  });
+  onDestroy(() => {
+    window.removeEventListener('resize', resizeHandler);
+  });
+
+  let isMobile = false;
   function handleSymbolSearch() {
     if (searchSymbol) {
       selectedSymbol.set(searchSymbol.toUpperCase());
     }
   }
+  $: isMobile = typeof window !== 'undefined' && window.innerWidth < 600;
 </script>
 
 <WebSocketManager />
@@ -55,16 +85,27 @@
       </div>
     </div>
 
-    <!-- Chart controls -->
-    <ChartControls 
-      bind:showVolume 
-      bind:showMA 
-    />
+
+    {#if !isMobile}
+      <!-- Chart controls above chart for desktop/tablet -->
+      <ChartControls 
+        bind:showVolume 
+        bind:showMA 
+      />
+    {/if}
 
     <!-- Main chart -->
     <div class="chart-container">
-      <CandlestickChart width={1200} height={600} />
+      <CandlestickChart width={chartWidth} height={chartHeight} />
     </div>
+
+    {#if isMobile}
+      <!-- Chart controls below chart for mobile -->
+      <ChartControls 
+        bind:showVolume 
+        bind:showMA 
+      />
+    {/if}
 
     <!-- Patterns list -->
     <PatternsList />
@@ -81,14 +122,6 @@
 </main>
 
 <style>
-  :global(body) {
-    margin: 0;
-    padding: 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #0a0a0a;
-    color: white;
-  }
-
   main {
     padding: 2rem;
   }
@@ -96,6 +129,8 @@
   .container {
     max-width: 1400px;
     margin: 0 auto;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   header {
@@ -103,6 +138,8 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
   }
 
   .header-left {
@@ -171,6 +208,8 @@
     background: #1a1a1a;
     border-radius: 12px;
     margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 1rem;
   }
 
   .symbol-name h2 {
@@ -200,6 +239,9 @@
     display: flex;
     justify-content: center;
     margin: 2rem 0;
+    width: 100%;
+    overflow-x: auto;
+    max-width: 100vw;
   }
 
   footer {
@@ -217,5 +259,69 @@
 
   footer a:hover {
     text-decoration: underline;
+  }
+
+  /* Responsive styles for mobile */
+  @media (max-width: 900px) {
+    .container {
+      max-width: 100vw;
+      padding: 0 1rem;
+    }
+    main {
+      padding: 1rem;
+    }
+    .symbol-info {
+      flex-direction: column;
+      align-items: flex-start;
+      text-align: left;
+      padding: 1rem;
+    }
+    .chart-container {
+      margin: 1rem 0;
+      max-width: 100vw;
+    }
+    h1 {
+      font-size: 1.5rem;
+    }
+    .current-price {
+      font-size: 1.5rem;
+    }
+    .symbol-name h2 {
+      font-size: 1.2rem;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .container {
+      max-width: 100vw;
+      padding: 0 0.5rem;
+    }
+    main {
+      padding: 0.5rem;
+    }
+    header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+    .symbol-info {
+      flex-direction: column;
+      align-items: flex-start;
+      text-align: left;
+      padding: 0.5rem;
+    }
+    .chart-container {
+      margin: 0.5rem 0;
+      max-width: 100vw;
+    }
+    h1 {
+      font-size: 1.1rem;
+    }
+    .current-price {
+      font-size: 1.1rem;
+    }
+    .symbol-name h2 {
+      font-size: 1rem;
+    }
   }
 </style>
