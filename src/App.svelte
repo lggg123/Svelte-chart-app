@@ -9,6 +9,23 @@
   let showVolume = true;
   let showMA = false;
 
+  // Popular stocks for quick access
+  const popularStocks = [
+    { symbol: 'AAPL', name: 'Apple' },
+    { symbol: 'NVDA', name: 'NVIDIA' },
+    { symbol: 'GOOGL', name: 'Alphabet' },
+    { symbol: 'AMZN', name: 'Amazon' },
+    { symbol: 'MSFT', name: 'Microsoft' },
+    { symbol: 'TSLA', name: 'Tesla' },
+    { symbol: 'META', name: 'Meta' },
+    { symbol: 'NFLX', name: 'Netflix' }
+  ];
+
+  function selectStock(symbol) {
+    searchSymbol = symbol;
+    selectedSymbol.set(symbol);
+  }
+
   // Responsive chart sizing
   import { onMount, onDestroy } from 'svelte';
   let chartWidth = 1200;
@@ -64,12 +81,29 @@
         <input
           type="text"
           bind:value={searchSymbol}
-          placeholder="Enter symbol..."
+          placeholder="Enter symbol (e.g., NVDA)..."
           on:keydown={(e) => e.key === 'Enter' && handleSymbolSearch()}
         />
         <button on:click={handleSymbolSearch}>Search</button>
       </div>
     </header>
+
+    <!-- Popular Stocks Bar -->
+    <div class="popular-stocks">
+      <h3>Popular Stocks:</h3>
+      <div class="stock-buttons">
+        {#each popularStocks as stock}
+          <button
+            class="stock-btn"
+            class:active={$selectedSymbol === stock.symbol}
+            on:click={() => selectStock(stock.symbol)}
+            title={stock.name}
+          >
+            {stock.symbol}
+          </button>
+        {/each}
+      </div>
+    </div>
 
     <!-- Current symbol info -->
     <div class="symbol-info">
@@ -191,6 +225,52 @@
     background: #2563eb;
   }
 
+  .popular-stocks {
+    background: #1a1a1a;
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .popular-stocks h3 {
+    margin: 0 0 1rem 0;
+    font-size: 1rem;
+    color: #9ca3af;
+    font-weight: 500;
+  }
+
+  .stock-buttons {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .stock-btn {
+    padding: 0.625rem 1.25rem;
+    background: #2a2a2a;
+    color: #e5e7eb;
+    border: 2px solid #3a3a3a;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+    min-width: 80px;
+  }
+
+  .stock-btn:hover {
+    background: #3a3a3a;
+    border-color: #4a4a4a;
+    transform: translateY(-1px);
+  }
+
+  .stock-btn.active {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: white;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  }
+
   .symbol-info {
     display: flex;
     justify-content: space-between;
@@ -261,6 +341,21 @@
     main {
       padding: 1rem;
     }
+    .popular-stocks {
+      padding: 1rem;
+    }
+    .popular-stocks h3 {
+      font-size: 0.9rem;
+      margin-bottom: 0.75rem;
+    }
+    .stock-buttons {
+      gap: 0.5rem;
+    }
+    .stock-btn {
+      padding: 0.5rem 1rem;
+      font-size: 0.875rem;
+      min-width: 70px;
+    }
     .symbol-info {
       flex-direction: column;
       align-items: flex-start;
@@ -294,6 +389,21 @@
       flex-direction: column;
       align-items: flex-start;
       gap: 0.5rem;
+    }
+    .popular-stocks {
+      padding: 0.75rem;
+    }
+    .popular-stocks h3 {
+      font-size: 0.85rem;
+      margin-bottom: 0.5rem;
+    }
+    .stock-buttons {
+      gap: 0.4rem;
+    }
+    .stock-btn {
+      padding: 0.4rem 0.75rem;
+      font-size: 0.8rem;
+      min-width: 60px;
     }
     .symbol-info {
       flex-direction: column;

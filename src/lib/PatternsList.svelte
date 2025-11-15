@@ -1,6 +1,11 @@
 <script>
   import { patterns } from './stores';
 
+  // Sort patterns by timestamp, most recent first
+  $: sortedPatterns = [...$patterns].sort((a, b) => 
+    new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  );
+
   function formatTime(timestamp) {
     return new Date(timestamp).toLocaleTimeString();
   }
@@ -14,11 +19,11 @@
   }
 </script>
 
-{#if $patterns.length > 0}
+{#if sortedPatterns.length > 0}
   <div class="patterns-list">
-    <h3>Detected Patterns</h3>
+    <h3>Detected Patterns ({sortedPatterns.length})</h3>
     <div class="patterns-scroll">
-      {#each $patterns as pattern}
+      {#each sortedPatterns as pattern (pattern.timestamp + pattern.pattern_type)}
         <div class="pattern-card">
           <div class="pattern-header">
             <span class="pattern-icon">{getPatternIcon(pattern.direction)}</span>

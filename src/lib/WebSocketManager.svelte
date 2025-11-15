@@ -77,7 +77,20 @@
       case 'pattern_detected':
         // New pattern detected
         const pattern = data.data;
-        patterns.update(p => [...p, pattern]);
+        patterns.update(p => {
+          // Check if pattern already exists (prevent duplicates)
+          const isDuplicate = p.some(existing => 
+            existing.pattern_type === pattern.pattern_type &&
+            existing.timestamp === pattern.timestamp &&
+            existing.direction === pattern.direction
+          );
+          
+          if (isDuplicate) return p;
+          
+          // Add new pattern and keep only last 10 patterns
+          const updated = [...p, pattern];
+          return updated.length > 10 ? updated.slice(-10) : updated;
+        });
         showNotification(pattern);
         break;
         
@@ -130,8 +143,18 @@
   });
 
   // Reconnect when symbol or timeframe changes
+  let previousSymbol = $selectedSymbol;
+  let previousTimeframe = $selectedTimeframe;
+  
   $: {
-    if ($selectedSymbol || $selectedTimeframe) {
+    const symbolChanged = $selectedSymbol !== previousSymbol;
+    const timeframeChanged = $selectedTimeframe !== previousTimeframe;
+    
+    if (symbolChanged || timeframeChanged) {
+      console.log(`🔄 Switching to ${$selectedSymbol} (${$selectedTimeframe})`);
+      previousSymbol = $selectedSymbol;
+      previousTimeframe = $selectedTimeframe;
+      
       disconnect();
       candles.set([]);
       patterns.set([]);
