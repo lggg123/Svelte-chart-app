@@ -5,16 +5,16 @@
 class APIService {
   constructor() {
     // Pattern Detection API (Railway) - has all the endpoints we need!
-    this.baseURL = import.meta.env.VITE_PATTERN_API_URL || 'https://virtual-options-desk-production.up.railway.app';
+    this.baseURL = (import.meta.env.VITE_PATTERN_API_URL || 'https://virtual-options-desk-production.up.railway.app').replace(/\/$/, '');
     
     // WebSocket for real-time data (Railway) - same server
-    this.wsURL = import.meta.env.VITE_WS_URL || 'wss://virtual-options-desk-production.up.railway.app';
+    this.wsURL = (import.meta.env.VITE_WS_URL || 'wss://virtual-options-desk-production.up.railway.app').replace(/\/$/, '');
     
     // ML Stock Screening API (Render) - for advanced features
-    this.mlAPI = import.meta.env.VITE_API_URL || 'https://ml-stock-screening-api.onrender.com';
+    this.mlAPI = (import.meta.env.VITE_API_URL || 'https://ml-stock-screening-api.onrender.com').replace(/\/$/, '');
     
     // CrewAI Service (Railway) - for AI analysis
-    this.crewAI = import.meta.env.VITE_CREWAI_URL || 'https://feisty-courage-production.up.railway.app';
+    this.crewAI = (import.meta.env.VITE_CREWAI_URL || 'https://feisty-courage-production.up.railway.app').replace(/\/$/, '');
   }
 
   async getTopPicks(count = 100, category = null) {
