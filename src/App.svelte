@@ -4,10 +4,12 @@
   import CandlestickChart from './lib/CandlestickChart.svelte';
   import ChartControls from './lib/ChartControls.svelte';
   import PatternsList from './lib/PatternsList.svelte';
+  import StockList from './lib/StockList.svelte';
 
   let searchSymbol = $selectedSymbol;
   let showVolume = true;
   let showMA = false;
+  let showStockList = false;
 
   // Popular stocks for quick access
   const popularStocks = [
@@ -89,6 +91,9 @@
           on:keydown={(e) => e.key === 'Enter' && handleSymbolSearch()}
         />
         <button on:click={handleSymbolSearch}>Search</button>
+        <button class="browse-btn" on:click={() => showStockList = true}>
+          📋 Browse
+        </button>
       </div>
     </header>
 
@@ -149,6 +154,10 @@
     </footer>
   </div>
 </main>
+
+{#if showStockList}
+  <StockList onClose={() => showStockList = false} />
+{/if}
 
 <style>
   :global(body) {
@@ -239,6 +248,15 @@
 
   .symbol-search button:hover {
     background: #2563eb;
+  }
+
+  .browse-btn {
+    background: #10b981 !important;
+    white-space: nowrap;
+  }
+
+  .browse-btn:hover {
+    background: #059669 !important;
   }
 
   .popular-stocks {
@@ -431,6 +449,10 @@
     .symbol-search button {
       padding: 0.625rem 1rem;
       font-size: 0.9rem;
+    }
+
+    .browse-btn {
+      padding: 0.625rem 0.75rem !important;
     }
     
     .popular-stocks {
