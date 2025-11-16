@@ -8,13 +8,27 @@
   let canvas;
   let ctx;
   let animationFrame;
+  let dpr = 1; // Device pixel ratio for sharp rendering
 
-  const padding = { top: 20, right: 80, bottom: 40, left: 60 };
-  const chartWidth = width - padding.left - padding.right;
-  const chartHeight = height - padding.top - padding.bottom;
+  // Adjust padding based on canvas size
+  $: isMobile = width < 600;
+  $: padding = isMobile 
+    ? { top: 15, right: 55, bottom: 30, left: 45 }
+    : { top: 20, right: 80, bottom: 40, left: 60 };
+  
+  $: chartWidth = width - padding.left - padding.right;
+  $: chartHeight = height - padding.top - padding.bottom;
 
   onMount(() => {
+    // Handle high DPI displays
+    dpr = window.devicePixelRatio || 1;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+    
     ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
     draw();
@@ -26,8 +40,16 @@
     }
   });
 
-  // Redraw when candles or patterns change
-  $: if ($candles.length > 0) {
+  // Redraw when candles, patterns, or dimensions change
+  $: if ($candles.length > 0 && ctx) {
+    // Update canvas size if dimensions changed
+    if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      ctx.scale(dpr, dpr);
+    }
     requestAnimationFrame(draw);
   }
 
@@ -160,30 +182,35 @@
       const y = padding.top + 10;
 
       // Draw pattern marker
-      ctx.font = '20px Arial';
+      const emojiSize = isMobile ? '16px' : '20px';
+      ctx.font = `${emojiSize} Arial`;
       ctx.textAlign = 'center';
       ctx.fillText(pattern.direction === 'bullish' ? '🟢' : '🔴', x, y);
 
-      // Draw pattern label
-      ctx.font = '10px Arial';
-      ctx.fillStyle = pattern.direction === 'bullish' ? '#22c55e' : '#ef4444';
-      ctx.fillText(pattern.pattern_type, x, y + 15);
+      // Draw pattern label (skip on very small screens to reduce clutter)
+      if (!isMobile || width > 350) {
+        const labelSize = isMobile ? '8px' : '10px';
+        ctx.font = `${labelSize} Arial`;
+        ctx.fillStyle = pattern.direction === 'bullish' ? '#22c55e' : '#ef4444';
+        ctx.fillText(pattern.pattern_type, x, y + (isMobile ? 12 : 15));
+      }
     });
   }
 
   function drawPriceAxis(minPrice, maxPrice) {
     ctx.fillStyle = '#9ca3af';
-    ctx.font = '12px monospace';
+    ctx.font = isMobile ? '10px monospace' : '12px monospace';
     ctx.textAlign = 'left';
 
-    const priceSteps = 5;
+    const priceSteps = isMobile ? 4 : 5;
     const priceStep = (maxPrice - minPrice) / priceSteps;
     
     for (let i = 0; i <= priceSteps; i++) {
       const price = minPrice + (i * priceStep);
       const y = padding.top + chartHeight - ((price - minPrice) / (maxPrice - minPrice)) * chartHeight;
       
-      ctx.fillText(`$${price.toFixed(2)}`, padding.left + chartWidth + 10, y + 4);
+      const xOffset = isMobile ? 5 : 10;
+      ctx.fillText(`$${price.toFixed(2)}`, padding.left + chartWidth + xOffset, y + 4);
     }
   }
 
@@ -201,12 +228,16 @@
     ctx.setLineDash([]);
 
     // Draw price label
+    const labelWidth = isMobile ? 50 : 60;
+    const labelHeight = isMobile ? 18 : 20;
+    const fontSize = isMobile ? '10px' : '12px';
+    
     ctx.fillStyle = '#3b82f6';
-    ctx.fillRect(padding.left + chartWidth + 5, y - 12, 60, 20);
+    ctx.fillRect(padding.left + chartWidth + 5, y - (labelHeight / 2), labelWidth, labelHeight);
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 12px monospace';
+    ctx.font = `bold ${fontSize} monospace`;
     ctx.textAlign = 'center';
-    ctx.fillText(`$${price.toFixed(2)}`, padding.left + chartWidth + 35, y + 4);
+    ctx.fillText(`$${price.toFixed(2)}`, padding.left + chartWidth + 5 + (labelWidth / 2), y + 4);
   }
 </script>
 
@@ -222,5 +253,15 @@
     background: #1a1a1a;
     border-radius: 12px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    max-width: 100%;
+    height: auto;
+    display: block;
+    touch-action: pan-x pan-y;
+  }
+
+  @media (max-width: 600px) {
+    .candlestick-chart {
+      border-radius: 8px;
+    }
   }
 </style>

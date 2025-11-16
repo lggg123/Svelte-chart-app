@@ -125,4 +125,43 @@
     color: #9ca3af;
     font-size: 0.75rem;
   }
+
+  @media (max-width: 600px) {
+    .patterns-list {
+      padding: 0.75rem;
+      margin-top: 0.75rem;
+    }
+
+    h3 {
+      font-size: 1rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .patterns-scroll {
+      gap: 0.75rem;
+      padding-bottom: 0.75rem;
+    }
+
+    .pattern-card {
+      min-width: 180px;
+      padding: 0.75rem;
+    }
+
+    .pattern-icon {
+      font-size: 1.25rem;
+    }
+
+    .pattern-name {
+      font-size: 0.9rem;
+    }
+
+    .confidence,
+    .strength {
+      font-size: 0.8rem;
+    }
+
+    .pattern-time {
+      font-size: 0.7rem;
+    }
+  }
 </style>

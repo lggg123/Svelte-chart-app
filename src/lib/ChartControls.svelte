@@ -107,24 +107,45 @@
     .controls {
       flex-direction: column;
       align-items: stretch;
-      padding: 0.5rem;
+      padding: 0.75rem;
+      gap: 0.75rem;
     }
+    
+    .timeframe-buttons {
+      justify-content: space-between;
+      width: 100%;
+    }
+    
+    .tf-btn {
+      flex: 1;
+      padding: 0.6rem 0.5rem;
+      font-size: 0.85rem;
+      min-width: 0;
+    }
+    
     .indicators {
-      gap: 0.5rem;
-      font-size: 0.9rem;
+      gap: 1rem;
+      font-size: 0.85rem;
+      justify-content: center;
     }
+    
     .indicators-below {
       margin-top: 0.5rem;
       margin-bottom: 0.5rem;
-      justify-content: flex-start;
+      justify-content: center;
+      padding: 0.5rem;
+      background: #1a1a1a;
+      border-radius: 8px;
     }
+    
     label {
-      font-size: 0.9rem;
-      gap: 0.3rem;
+      font-size: 0.85rem;
+      gap: 0.4rem;
     }
+    
     input[type="checkbox"] {
-      width: 1rem;
-      height: 1rem;
+      width: 1.1rem;
+      height: 1.1rem;
     }
   }
 

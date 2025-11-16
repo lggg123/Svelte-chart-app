@@ -33,14 +33,18 @@
   let resizeHandler;
   function updateChartSize() {
     if (typeof window !== 'undefined') {
-      if (window.innerWidth < 600) {
-        chartWidth = window.innerWidth - 32;
-        chartHeight = 260;
-      } else if (window.innerWidth < 900) {
-        chartWidth = window.innerWidth - 64;
-        chartHeight = 340;
+      const vw = window.innerWidth;
+      if (vw < 600) {
+        // Mobile: Full width minus minimal padding, taller height
+        chartWidth = vw - 16;
+        chartHeight = 400;
+      } else if (vw < 900) {
+        // Tablet
+        chartWidth = vw - 32;
+        chartHeight = 450;
       } else {
-        chartWidth = 1200;
+        // Desktop
+        chartWidth = Math.min(1200, vw - 100);
         chartHeight = 500;
       }
     }
@@ -147,8 +151,16 @@
 </main>
 
 <style>
+  :global(body) {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+  }
+
   main {
-    padding: 2rem;
+    padding: 1rem;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .container {
@@ -162,9 +174,10 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 2rem;
+    margin-bottom: 1rem;
     flex-wrap: wrap;
     gap: 1rem;
+    width: 100%;
   }
 
   .header-left {
@@ -193,6 +206,8 @@
   .symbol-search {
     display: flex;
     gap: 0.5rem;
+    flex: 1;
+    min-width: 200px;
   }
 
   .symbol-search input {
@@ -202,7 +217,8 @@
     border-radius: 8px;
     color: white;
     font-size: 1rem;
-    min-width: 200px;
+    flex: 1;
+    min-width: 120px;
   }
 
   .symbol-search input:focus {
@@ -309,10 +325,9 @@
   .chart-container {
     display: flex;
     justify-content: center;
-    margin: 2rem 0;
+    margin: 1rem 0;
     width: 100%;
-    overflow-x: auto;
-    max-width: 100vw;
+    overflow: visible;
   }
 
   footer {
@@ -334,15 +349,15 @@
 
   /* Responsive styles for mobile */
   @media (max-width: 900px) {
-    .container {
-      max-width: 100vw;
-      padding: 0 1rem;
-    }
     main {
-      padding: 1rem;
+      padding: 0.75rem;
+    }
+    .container {
+      padding: 0;
     }
     .popular-stocks {
-      padding: 1rem;
+      padding: 0.75rem;
+      margin-bottom: 0.75rem;
     }
     .popular-stocks h3 {
       font-size: 0.9rem;
@@ -352,77 +367,125 @@
       gap: 0.5rem;
     }
     .stock-btn {
-      padding: 0.5rem 1rem;
-      font-size: 0.875rem;
-      min-width: 70px;
+      padding: 0.5rem 0.9rem;
+      font-size: 0.85rem;
+      min-width: 65px;
     }
     .symbol-info {
-      flex-direction: column;
-      align-items: flex-start;
-      text-align: left;
-      padding: 1rem;
+      padding: 0.75rem;
+      margin-bottom: 0.75rem;
     }
-    .chart-container {
-      margin: 1rem 0;
-      max-width: 100vw;
+    .price-info {
+      text-align: left;
     }
     h1 {
       font-size: 1.5rem;
     }
     .current-price {
-      font-size: 1.5rem;
+      font-size: 2rem;
     }
     .symbol-name h2 {
-      font-size: 1.2rem;
+      font-size: 1.5rem;
+    }
+    footer {
+      margin-top: 2rem;
+      font-size: 0.875rem;
     }
   }
 
   @media (max-width: 600px) {
-    .container {
-      max-width: 100vw;
-      padding: 0 0.5rem;
-    }
     main {
       padding: 0.5rem;
     }
+    
     header {
       flex-direction: column;
-      align-items: flex-start;
-      gap: 0.5rem;
+      align-items: stretch;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
     }
+
+    .header-left {
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    h1 {
+      font-size: 1.25rem;
+    }
+
+    .connection-status {
+      padding: 0.4rem 0.75rem;
+      font-size: 0.75rem;
+    }
+
+    .symbol-search {
+      width: 100%;
+    }
+
+    .symbol-search input {
+      padding: 0.625rem 0.75rem;
+      font-size: 0.9rem;
+    }
+
+    .symbol-search button {
+      padding: 0.625rem 1rem;
+      font-size: 0.9rem;
+    }
+    
     .popular-stocks {
-      padding: 0.75rem;
+      padding: 0.625rem;
+      margin-bottom: 0.625rem;
     }
+    
     .popular-stocks h3 {
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       margin-bottom: 0.5rem;
     }
+    
     .stock-buttons {
-      gap: 0.4rem;
+      gap: 0.375rem;
     }
+    
     .stock-btn {
-      padding: 0.4rem 0.75rem;
-      font-size: 0.8rem;
-      min-width: 60px;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.75rem;
+      min-width: 55px;
+      flex: 1;
     }
+    
     .symbol-info {
-      flex-direction: column;
-      align-items: flex-start;
-      text-align: left;
-      padding: 0.5rem;
+      padding: 0.75rem;
+      margin-bottom: 0.75rem;
+      gap: 0.75rem;
     }
-    .chart-container {
-      margin: 0.5rem 0;
-      max-width: 100vw;
-    }
-    h1 {
-      font-size: 1.1rem;
-    }
-    .current-price {
-      font-size: 1.1rem;
-    }
+
     .symbol-name h2 {
+      font-size: 1.25rem;
+    }
+    
+    .price-info {
+      width: 100%;
+      text-align: left;
+    }
+    
+    .current-price {
+      font-size: 1.75rem;
+    }
+
+    .price-change {
       font-size: 1rem;
+    }
+    
+    .chart-container {
+      margin: 0.75rem 0;
+      width: 100%;
+    }
+
+    footer {
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      font-size: 0.75rem;
     }
   }
 </style>
