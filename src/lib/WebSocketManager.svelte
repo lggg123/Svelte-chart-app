@@ -130,37 +130,51 @@
     }
   }
 
+  // Track previous values to detect changes
+  let previousSymbol = null;
+  let previousTimeframe = null;
+
+  // Reconnect when symbol or timeframe changes
+  function reconnectIfNeeded(symbol, timeframe) {
+    // Skip if values haven't actually changed
+    if (symbol === previousSymbol && timeframe === previousTimeframe) {
+      return;
+    }
+
+    // Skip initial mount (handled by onMount)
+    if (previousSymbol === null && previousTimeframe === null) {
+      previousSymbol = symbol;
+      previousTimeframe = timeframe;
+      return;
+    }
+
+    console.log(`🔄 Switching to ${symbol} (${timeframe})`);
+    previousSymbol = symbol;
+    previousTimeframe = timeframe;
+
+    disconnect();
+    candles.set([]);
+    patterns.set([]);
+    connect();
+  }
+
+  // Reactive statement to watch for changes
+  $: reconnectIfNeeded($selectedSymbol, $selectedTimeframe);
+
   onMount(() => {
     // Request notification permission
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
     }
+    // Set initial values before connecting
+    previousSymbol = $selectedSymbol;
+    previousTimeframe = $selectedTimeframe;
     connect();
   });
 
   onDestroy(() => {
     disconnect();
   });
-
-  // Reconnect when symbol or timeframe changes
-  let previousSymbol = $selectedSymbol;
-  let previousTimeframe = $selectedTimeframe;
-  
-  $: {
-    const symbolChanged = $selectedSymbol !== previousSymbol;
-    const timeframeChanged = $selectedTimeframe !== previousTimeframe;
-    
-    if (symbolChanged || timeframeChanged) {
-      console.log(`🔄 Switching to ${$selectedSymbol} (${$selectedTimeframe})`);
-      previousSymbol = $selectedSymbol;
-      previousTimeframe = $selectedTimeframe;
-      
-      disconnect();
-      candles.set([]);
-      patterns.set([]);
-      connect();
-    }
-  }
 </script>
 
 <!-- This component has no visible output, just manages WebSocket -->
