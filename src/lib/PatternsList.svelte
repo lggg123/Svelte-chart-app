@@ -1,13 +1,22 @@
 <script>
   import { patterns } from './stores';
 
+  let selectedPattern = null;
+
   // Sort patterns by timestamp, most recent first
   $: sortedPatterns = [...$patterns].sort((a, b) => 
     new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   );
 
   function formatTime(timestamp) {
-    return new Date(timestamp).toLocaleTimeString();
+    const date = new Date(timestamp);
+    return date.toLocaleString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
   }
 
   function getPatternIcon(direction) {
@@ -15,27 +24,173 @@
   }
 
   function getStars(strength) {
-    return '⭐'.repeat(strength);
+    return '⭐'.repeat(strength || 1);
+  }
+
+  function openPatternDetails(pattern) {
+    selectedPattern = pattern;
+  }
+
+  function closePatternDetails() {
+    selectedPattern = null;
+  }
+
+  function getPatternExplanation(patternType, direction) {
+    const explanations = {
+      'doji': {
+        bullish: 'A Doji pattern suggests market indecision. In an uptrend, it may signal a potential reversal. The opening and closing prices are nearly equal.',
+        bearish: 'A Doji pattern suggests market indecision. In a downtrend, it may signal a potential reversal upward. The opening and closing prices are nearly equal.'
+      },
+      'hammer': {
+        bullish: 'A Hammer is a strong bullish reversal pattern. It forms after a decline and signals that buyers are stepping in. The long lower shadow shows rejection of lower prices.',
+        bearish: 'An inverted Hammer can signal bearish pressure. Despite the lower shadow, the market closed near the low, showing sellers are in control.'
+      },
+      'shooting star': {
+        bullish: 'A Shooting Star at the bottom can indicate a potential reversal. The long upper shadow shows buyers attempted to push higher but failed.',
+        bearish: 'A Shooting Star is a bearish reversal pattern. It forms after an uptrend and signals that sellers are taking control. The long upper shadow shows rejection of higher prices.'
+      },
+      'engulfing': {
+        bullish: 'A Bullish Engulfing pattern occurs when a large green candle completely engulfs the previous red candle. This signals strong buying pressure and potential trend reversal.',
+        bearish: 'A Bearish Engulfing pattern occurs when a large red candle completely engulfs the previous green candle. This signals strong selling pressure and potential trend reversal.'
+      },
+      'morning star': {
+        bullish: 'A Morning Star is a three-candle bullish reversal pattern. It signals the end of a downtrend and the beginning of an uptrend. Very reliable when confirmed.',
+        bearish: 'This variation suggests caution despite the pattern name. Wait for confirmation before acting.'
+      },
+      'evening star': {
+        bullish: 'Despite the pattern name, this suggests waiting for more confirmation before taking action.',
+        bearish: 'An Evening Star is a three-candle bearish reversal pattern. It signals the end of an uptrend and potential downturn. Very reliable when confirmed.'
+      },
+      'three white soldiers': {
+        bullish: 'Three White Soldiers is a strong bullish pattern showing three consecutive green candles with higher closes. Indicates strong buying momentum.',
+        bearish: 'Unexpected bearish signal with this pattern. Exercise caution and wait for confirmation.'
+      },
+      'three black crows': {
+        bullish: 'Unexpected bullish signal with this pattern. Exercise caution and wait for confirmation.',
+        bearish: 'Three Black Crows is a strong bearish pattern showing three consecutive red candles with lower closes. Indicates strong selling momentum.'
+      }
+    };
+
+    const key = patternType.toLowerCase();
+    const dir = direction === 'bullish' ? 'bullish' : 'bearish';
+    
+    return explanations[key]?.[dir] || 
+           `A ${patternType} pattern has been detected with a ${direction} signal. This suggests potential price movement in the ${direction} direction.`;
+  }
+
+  function getTradingAdvice(direction, confidence) {
+    const conf = Math.round(confidence * 100);
+    
+    if (direction === 'bullish') {
+      if (conf >= 80) {
+        return '💡 Strong buy signal. Consider entering a long position with proper risk management.';
+      } else if (conf >= 60) {
+        return '💡 Moderate buy signal. Wait for confirmation before entering.';
+      } else {
+        return '💡 Weak signal. Monitor for additional confirmation signals.';
+      }
+    } else {
+      if (conf >= 80) {
+        return '💡 Strong sell signal. Consider taking profits or entering a short position.';
+      } else if (conf >= 60) {
+        return '💡 Moderate sell signal. Consider reducing exposure or wait for confirmation.';
+      } else {
+        return '💡 Weak signal. Monitor for additional confirmation signals.';
+      }
+    }
   }
 </script>
 
 {#if sortedPatterns.length > 0}
   <div class="patterns-list">
-    <h3>Detected Patterns ({sortedPatterns.length})</h3>
+    <h3>📊 Detected Patterns ({sortedPatterns.length})</h3>
     <div class="patterns-scroll">
       {#each sortedPatterns as pattern (pattern.timestamp + pattern.pattern_type)}
-        <div class="pattern-card">
+        <button 
+          class="pattern-card"
+          on:click={() => openPatternDetails(pattern)}
+        >
           <div class="pattern-header">
             <span class="pattern-icon">{getPatternIcon(pattern.direction)}</span>
             <span class="pattern-name">{pattern.pattern_type}</span>
           </div>
           <div class="pattern-details">
-            <span class="confidence">{Math.round(pattern.confidence * 100)}% confidence</span>
+            <span class="confidence">{Math.round(pattern.confidence * 100)}% confident</span>
             <span class="strength">{getStars(pattern.strength)}</span>
           </div>
           <div class="pattern-time">{formatTime(pattern.timestamp)}</div>
-        </div>
+          <div class="learn-more">
+            (Click to understand)
+          </div>
+        </button>
       {/each}
+    </div>
+  </div>
+{/if}
+
+{#if selectedPattern}
+  <div 
+    class="pattern-modal-overlay" 
+    on:click={closePatternDetails}
+    on:keydown={(e) => e.key === 'Escape' && closePatternDetails()}
+    role="button"
+    tabindex="0"
+  >
+    <div 
+      class="pattern-modal"
+      on:click|stopPropagation
+      on:keydown|stopPropagation
+      role="dialog"
+      aria-modal="true"
+      tabindex="-1"
+    >
+      <div class="modal-header">
+        <div class="modal-title">
+          <span class="modal-icon">{getPatternIcon(selectedPattern.direction)}</span>
+          <h3>{selectedPattern.pattern_type}</h3>
+        </div>
+        <button class="close-btn" on:click={closePatternDetails}>✕</button>
+      </div>
+
+      <div class="modal-content">
+        <div class="info-section">
+          <div class="info-label">Signal Type</div>
+          <div class="info-value {selectedPattern.direction}">
+            {selectedPattern.direction === 'bullish' ? '📈 Bullish (Upward)' : '📉 Bearish (Downward)'}
+          </div>
+        </div>
+
+        <div class="info-section">
+          <div class="info-label">Confidence Level</div>
+          <div class="confidence-bar-container">
+            <div class="confidence-bar" style="width: {Math.round(selectedPattern.confidence * 100)}%"></div>
+            <span class="confidence-text">{Math.round(selectedPattern.confidence * 100)}%</span>
+          </div>
+        </div>
+
+        <div class="info-section">
+          <div class="info-label">Pattern Strength</div>
+          <div class="info-value">
+            {getStars(selectedPattern.strength)} ({selectedPattern.strength || 1}/5)
+          </div>
+        </div>
+
+        <div class="info-section">
+          <div class="info-label">Detected At</div>
+          <div class="info-value">{formatTime(selectedPattern.timestamp)}</div>
+        </div>
+
+        <div class="explanation-section">
+          <h4>📖 What does this mean?</h4>
+          <p>{getPatternExplanation(selectedPattern.pattern_type, selectedPattern.direction)}</p>
+        </div>
+
+        <div class="advice-section">
+          <h4>💼 Trading Consideration</h4>
+          <p>{getTradingAdvice(selectedPattern.direction, selectedPattern.confidence)}</p>
+          <p class="disclaimer">⚠️ Always use stop-losses and never risk more than you can afford to lose.</p>
+        </div>
+      </div>
     </div>
   </div>
 {/if}
@@ -76,17 +231,22 @@
   }
 
   .pattern-card {
-    min-width: 200px;
+    min-width: 220px;
     background: #2a2a2a;
     border-radius: 8px;
     padding: 1rem;
     border: 2px solid transparent;
     transition: all 0.2s;
+    cursor: pointer;
+    text-align: left;
+    color: inherit;
+    font: inherit;
   }
 
   .pattern-card:hover {
     border-color: #3b82f6;
     transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
   }
 
   .pattern-header {
@@ -124,8 +284,190 @@
   .pattern-time {
     color: #9ca3af;
     font-size: 0.75rem;
+    margin-bottom: 0.5rem;
   }
 
+  .learn-more {
+    color: #3b82f6;
+    font-size: 0.75rem;
+    font-style: italic;
+    margin-top: 0.5rem;
+  }
+
+  /* Modal Styles */
+  .pattern-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    padding: 1rem;
+    backdrop-filter: blur(4px);
+  }
+
+  .pattern-modal {
+    background: #1a1a1a;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    border: 1px solid #2a2a2a;
+  }
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 2px solid #2a2a2a;
+  }
+
+  .modal-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .modal-icon {
+    font-size: 2rem;
+  }
+
+  .modal-title h3 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: white;
+    text-transform: capitalize;
+  }
+
+  .close-btn {
+    background: #2a2a2a;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+
+  .close-btn:hover {
+    background: #3a3a3a;
+    transform: rotate(90deg);
+  }
+
+  .modal-content {
+    padding: 1.5rem;
+  }
+
+  .info-section {
+    margin-bottom: 1.5rem;
+  }
+
+  .info-label {
+    color: #9ca3af;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+  }
+
+  .info-value {
+    color: white;
+    font-size: 1.125rem;
+    font-weight: 500;
+  }
+
+  .info-value.bullish {
+    color: #22c55e;
+  }
+
+  .info-value.bearish {
+    color: #ef4444;
+  }
+
+  .confidence-bar-container {
+    position: relative;
+    width: 100%;
+    height: 32px;
+    background: #2a2a2a;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .confidence-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6, #22c55e);
+    transition: width 0.3s ease;
+    border-radius: 8px;
+  }
+
+  .confidence-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-weight: 700;
+    font-size: 1rem;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  }
+
+  .explanation-section,
+  .advice-section {
+    background: #2a2a2a;
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+  }
+
+  .explanation-section h4,
+  .advice-section h4 {
+    color: white;
+    font-size: 1.125rem;
+    margin: 0 0 0.75rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .explanation-section p,
+  .advice-section p {
+    color: #e5e7eb;
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  .advice-section p {
+    margin-bottom: 1rem;
+  }
+
+  .advice-section p:last-child {
+    margin-bottom: 0;
+  }
+
+  .disclaimer {
+    color: #fbbf24 !important;
+    font-size: 0.875rem;
+    font-style: italic;
+    background: rgba(251, 191, 36, 0.1);
+    padding: 0.75rem;
+    border-radius: 8px;
+    border-left: 3px solid #fbbf24;
+  }
+
+  /* Mobile Styles */
   @media (max-width: 600px) {
     .patterns-list {
       padding: 0.75rem;
@@ -143,7 +485,7 @@
     }
 
     .pattern-card {
-      min-width: 180px;
+      min-width: 200px;
       padding: 0.75rem;
     }
 
@@ -162,6 +504,60 @@
 
     .pattern-time {
       font-size: 0.7rem;
+    }
+
+    .learn-more {
+      font-size: 0.7rem;
+    }
+
+    .pattern-modal-overlay {
+      padding: 0;
+    }
+
+    .pattern-modal {
+      border-radius: 0;
+      max-height: 100vh;
+      height: 100vh;
+    }
+
+    .modal-header {
+      padding: 1rem;
+    }
+
+    .modal-icon {
+      font-size: 1.5rem;
+    }
+
+    .modal-title h3 {
+      font-size: 1.25rem;
+    }
+
+    .close-btn {
+      width: 36px;
+      height: 36px;
+      font-size: 1.25rem;
+    }
+
+    .modal-content {
+      padding: 1rem;
+    }
+
+    .info-label {
+      font-size: 0.75rem;
+    }
+
+    .info-value {
+      font-size: 1rem;
+    }
+
+    .explanation-section h4,
+    .advice-section h4 {
+      font-size: 1rem;
+    }
+
+    .explanation-section p,
+    .advice-section p {
+      font-size: 0.9rem;
     }
   }
 </style>

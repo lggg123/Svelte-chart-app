@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import { candles, patterns } from './stores';
+  import { candles, patterns, selectedTimeframe } from './stores';
 
   export let width = 800;
   export let height = 500;
@@ -80,11 +80,14 @@
       drawCandle(candle, x, candleWidth, minPrice, priceRange);
     });
 
-    // Draw pattern markers
-    drawPatterns(visibleCandles, minPrice, priceRange, candleWidth);
+    // Pattern markers removed - now shown in interactive patterns list below chart
+    // drawPatterns(visibleCandles, minPrice, priceRange, candleWidth);
 
     // Draw price axis
     drawPriceAxis(minPrice, maxPrice);
+
+    // Draw time axis
+    drawTimeAxis(visibleCandles, candleWidth);
 
     // Draw current price line
     if (visibleCandles.length > 0) {
@@ -211,6 +214,106 @@
       
       const xOffset = isMobile ? 5 : 10;
       ctx.fillText(`$${price.toFixed(2)}`, padding.left + chartWidth + xOffset, y + 4);
+    }
+  }
+
+  function drawTimeAxis(candles, candleWidth) {
+    if (candles.length === 0) return;
+
+    ctx.fillStyle = '#9ca3af';
+    ctx.font = isMobile ? '9px sans-serif' : '11px sans-serif';
+    ctx.textAlign = 'center';
+
+    const timeframe = $selectedTimeframe;
+    const numLabels = isMobile ? 4 : 6;
+    const step = Math.floor(candles.length / numLabels);
+    
+    // Track the last drawn label position to check for overlaps
+    let lastDrawnX = -Infinity;
+    const minLabelSpacing = isMobile ? 60 : 80; // Minimum pixels between labels
+
+    for (let i = 0; i < candles.length; i += step) {
+      const candle = candles[i];
+      const x = padding.left + (i * candleWidth) + (candleWidth / 2);
+      const y = height - padding.bottom + 20;
+
+      const date = new Date(candle.time * 1000);
+      let label = '';
+
+      // Format based on timeframe
+      if (timeframe === '1m' || timeframe === '5m' || timeframe === '15m') {
+        // Intraday: show time only
+        label = date.toLocaleTimeString('en-US', { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          hour12: false 
+        });
+      } else if (timeframe === '1h' || timeframe === '4h') {
+        // Hourly: show month/day and hour separately with clear formatting
+        const monthDay = date.toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: 'numeric' 
+        });
+        const hour = date.getHours();
+        const formattedHour = hour.toString().padStart(2, '0') + ':00';
+        label = `${monthDay} ${formattedHour}`;
+      } else if (timeframe === '1d') {
+        // Daily: show month and day
+        label = date.toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: 'numeric' 
+        });
+      } else if (timeframe === '1w') {
+        // Weekly: show month and day
+        label = date.toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: 'numeric' 
+        });
+      } else {
+        // Default: show month and day
+        label = date.toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: 'numeric' 
+        });
+      }
+
+      ctx.fillText(label, x, y);
+      lastDrawnX = x;
+    }
+
+    // Show the last candle's time only if it doesn't overlap with the previous label
+    const lastCandle = candles[candles.length - 1];
+    const lastX = padding.left + ((candles.length - 1) * candleWidth) + (candleWidth / 2);
+    const lastY = height - padding.bottom + 20;
+    
+    // Only draw last label if it's far enough from the previous one
+    if (lastX - lastDrawnX >= minLabelSpacing) {
+      const lastDate = new Date(lastCandle.time * 1000);
+      
+      let lastLabel = '';
+      if (timeframe === '1m' || timeframe === '5m' || timeframe === '15m') {
+        lastLabel = lastDate.toLocaleTimeString('en-US', { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          hour12: false 
+        });
+      } else if (timeframe === '1h' || timeframe === '4h') {
+        const monthDay = lastDate.toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: 'numeric' 
+        });
+        const hour = lastDate.getHours();
+        const formattedHour = hour.toString().padStart(2, '0') + ':00';
+        lastLabel = `${monthDay} ${formattedHour}`;
+      } else {
+        lastLabel = lastDate.toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: 'numeric' 
+        });
+      }
+      
+      ctx.fillStyle = '#3b82f6';
+      ctx.fillText(lastLabel, lastX, lastY);
     }
   }
 
