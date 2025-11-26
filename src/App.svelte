@@ -5,11 +5,18 @@
   import ChartControls from './lib/ChartControls.svelte';
   import PatternsList from './lib/PatternsList.svelte';
   import StockList from './lib/StockList.svelte';
+  import { api } from './lib/api';
 
   let searchSymbol = $selectedSymbol;
   let showVolume = true;
   let showMA = false;
   let showStockList = false;
+
+  // EODHD Search state
+  let searchResults = [];
+  let showSearchResults = false;
+  let searchLoading = false;
+  let searchTimeout;
 
   // Popular stocks for quick access
   const popularStocks = [
@@ -26,6 +33,53 @@
   function selectStock(symbol) {
     searchSymbol = symbol;
     selectedSymbol.set(symbol);
+    showSearchResults = false;
+    searchResults = [];
+  }
+
+  // Debounced search using EODHD API
+  async function handleSearchInput() {
+    clearTimeout(searchTimeout);
+
+    if (!searchSymbol || searchSymbol.length < 1) {
+      searchResults = [];
+      showSearchResults = false;
+      return;
+    }
+
+    searchTimeout = setTimeout(async () => {
+      if (api.hasEODHDKey()) {
+        try {
+          searchLoading = true;
+          const results = await api.searchStocks(searchSymbol);
+          // Filter to show US stocks primarily, then others
+          searchResults = results
+            .filter(r => r.Code && r.Name)
+            .slice(0, 10);
+          showSearchResults = searchResults.length > 0;
+        } catch (err) {
+          console.error('Search failed:', err);
+          searchResults = [];
+        } finally {
+          searchLoading = false;
+        }
+      }
+    }, 300);
+  }
+
+  function selectSearchResult(result) {
+    const symbol = result.Code;
+    searchSymbol = symbol;
+    selectedSymbol.set(symbol);
+    showSearchResults = false;
+    searchResults = [];
+  }
+
+  function handleSearchBlur() {
+    // Delay hiding to allow click on results
+    setTimeout(() => {
+      showSearchResults = false;
+    }, 200);
   }
 
   // Responsive chart sizing
@@ -82,15 +136,37 @@
         </div>
       </div>
 
-      <!-- Symbol search -->
+      <!-- Symbol search with EODHD autocomplete -->
       <div class="symbol-search">
-        <input
-          type="text"
-          bind:value={searchSymbol}
-          placeholder="Enter symbol (e.g., NVDA)..."
-          on:keydown={(e) => e.key === 'Enter' && handleSymbolSearch()}
-        />
-        <button on:click={handleSymbolSearch}>Search</button>
+        <div class="search-input-wrapper">
+          <input
+            type="text"
+            bind:value={searchSymbol}
+            placeholder="Search any stock..."
+            on:input={handleSearchInput}
+            on:keydown={(e) => e.key === 'Enter' && handleSymbolSearch()}
+            on:blur={handleSearchBlur}
+            on:focus={() => searchResults.length > 0 && (showSearchResults = true)}
+          />
+          {#if searchLoading}
+            <div class="search-spinner"></div>
+          {/if}
+          {#if showSearchResults && searchResults.length > 0}
+            <div class="search-dropdown">
+              {#each searchResults as result}
+                <button
+                  class="search-result"
+                  on:mousedown={() => selectSearchResult(result)}
+                >
+                  <span class="result-symbol">{result.Code}</span>
+                  <span class="result-name">{result.Name}</span>
+                  <span class="result-exchange">{result.Exchange}</span>
+                </button>
+              {/each}
+            </div>
+          {/if}
+        </div>
+        <button on:click={handleSymbolSearch}>Go</button>
         <button class="browse-btn" on:click={() => showStockList = true}>
           📋 Browse
         </button>
@@ -219,20 +295,100 @@
     min-width: 200px;
   }
 
-  .symbol-search input {
+  .search-input-wrapper {
+    position: relative;
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .search-input-wrapper input {
+    width: 100%;
     padding: 0.75rem 1rem;
+    padding-right: 2.5rem;
     background: #2a2a2a;
     border: 2px solid #3a3a3a;
     border-radius: 8px;
     color: white;
     font-size: 1rem;
-    flex: 1;
-    min-width: 120px;
+    box-sizing: border-box;
   }
 
-  .symbol-search input:focus {
+  .search-input-wrapper input:focus {
     outline: none;
     border-color: #3b82f6;
+  }
+
+  .search-spinner {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    border: 2px solid #3a3a3a;
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: translateY(-50%) rotate(360deg); }
+  }
+
+  .search-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #1a1a1a;
+    border: 2px solid #3b82f6;
+    border-radius: 8px;
+    margin-top: 4px;
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 100;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  }
+
+  .search-result {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: transparent;
+    border: none;
+    color: white;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .search-result:hover {
+    background: #2a2a2a;
+  }
+
+  .result-symbol {
+    font-weight: 700;
+    color: #3b82f6;
+    min-width: 60px;
+  }
+
+  .result-name {
+    flex: 1;
+    font-size: 0.9rem;
+    color: #e5e7eb;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .result-exchange {
+    font-size: 0.75rem;
+    color: #6b7280;
+    background: #2a2a2a;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
   }
 
   .symbol-search button {
