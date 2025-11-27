@@ -1,7 +1,32 @@
 <script>
-  import { patterns } from './stores';
+  import { patterns, selectedTimeframe } from './stores';
 
   let selectedPattern = null;
+
+  // Get human-readable timeframe label with short/long term context
+  function getTimeframeLabel(tf) {
+    const labels = {
+      '1m': { label: '1 Minute', term: 'Very Short-Term', type: 'intraday' },
+      '5m': { label: '5 Minutes', term: 'Short-Term', type: 'intraday' },
+      '15m': { label: '15 Minutes', term: 'Short-Term', type: 'intraday' },
+      '1h': { label: '1 Hour', term: 'Short-Term', type: 'intraday' },
+      '4h': { label: '4 Hours', term: 'Medium-Term', type: 'swing' },
+      '1d': { label: '1 Day', term: 'Medium-Term', type: 'swing' },
+      '1w': { label: '1 Week', term: 'Long-Term', type: 'position' }
+    };
+    return labels[tf] || { label: tf, term: 'Unknown', type: 'unknown' };
+  }
+
+  // Get timeframe-specific trading advice
+  function getTimeframeAdvice(tf) {
+    const tfInfo = getTimeframeLabel(tf);
+    const advice = {
+      'intraday': 'These patterns are best for day trading. Signals may change quickly - monitor closely and use tight stop-losses.',
+      'swing': 'These patterns are suitable for swing trading (days to weeks). Allow time for the pattern to play out.',
+      'position': 'These patterns indicate longer-term trends. Best for position trading with wider stop-losses and longer holding periods.'
+    };
+    return advice[tfInfo.type] || 'Monitor the pattern based on your trading timeframe.';
+  }
 
   // Sort patterns by timestamp, most recent first
   $: sortedPatterns = [...$patterns].sort((a, b) => 
@@ -102,17 +127,27 @@
 </script>
 
 {#if sortedPatterns.length > 0}
+  {@const tfInfo = getTimeframeLabel($selectedTimeframe)}
   <div class="patterns-list">
-    <h3>📊 Detected Patterns ({sortedPatterns.length})</h3>
+    <div class="patterns-header">
+      <h3>📊 Detected Patterns ({sortedPatterns.length})</h3>
+      <div class="timeframe-badge {tfInfo.type}">
+        <span class="tf-label">{tfInfo.label}</span>
+        <span class="tf-term">{tfInfo.term}</span>
+      </div>
+    </div>
     <div class="patterns-scroll">
       {#each sortedPatterns as pattern (pattern.timestamp + pattern.pattern_type)}
-        <button 
+        <button
           class="pattern-card"
           on:click={() => openPatternDetails(pattern)}
         >
           <div class="pattern-header">
             <span class="pattern-icon">{getPatternIcon(pattern.direction)}</span>
             <span class="pattern-name">{pattern.pattern_type}</span>
+          </div>
+          <div class="timeframe-indicator {tfInfo.type}">
+            {tfInfo.term}
           </div>
           <div class="pattern-details">
             <span class="confidence">{Math.round(pattern.confidence * 100)}% confident</span>
@@ -129,14 +164,15 @@
 {/if}
 
 {#if selectedPattern}
-  <div 
-    class="pattern-modal-overlay" 
+  {@const modalTfInfo = getTimeframeLabel($selectedTimeframe)}
+  <div
+    class="pattern-modal-overlay"
     on:click={closePatternDetails}
     on:keydown={(e) => e.key === 'Escape' && closePatternDetails()}
     role="button"
     tabindex="0"
   >
-    <div 
+    <div
       class="pattern-modal"
       on:click|stopPropagation
       on:keydown|stopPropagation
@@ -153,6 +189,16 @@
       </div>
 
       <div class="modal-content">
+        <div class="timeframe-context-section {modalTfInfo.type}">
+          <div class="tf-context-header">
+            <span class="tf-clock">🕐</span>
+            <span class="tf-context-label">{modalTfInfo.term} Pattern</span>
+          </div>
+          <div class="tf-context-detail">
+            Detected on <strong>{modalTfInfo.label}</strong> chart
+          </div>
+        </div>
+
         <div class="info-section">
           <div class="info-label">Signal Type</div>
           <div class="info-value {selectedPattern.direction}">
@@ -183,6 +229,11 @@
         <div class="explanation-section">
           <h4>📖 What does this mean?</h4>
           <p>{getPatternExplanation(selectedPattern.pattern_type, selectedPattern.direction)}</p>
+        </div>
+
+        <div class="timeframe-advice-section">
+          <h4>⏱️ Timeframe Context</h4>
+          <p>{getTimeframeAdvice($selectedTimeframe)}</p>
         </div>
 
         <div class="advice-section">
@@ -292,6 +343,96 @@
     font-size: 0.75rem;
     font-style: italic;
     margin-top: 0.5rem;
+  }
+
+  /* Patterns Header with Timeframe Badge */
+  .patterns-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .patterns-header h3 {
+    margin-bottom: 0;
+  }
+
+  .timeframe-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    background: #2a2a2a;
+    border: 1px solid #3a3a3a;
+  }
+
+  .timeframe-badge.intraday {
+    border-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.1);
+  }
+
+  .timeframe-badge.swing {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.1);
+  }
+
+  .timeframe-badge.position {
+    border-color: #8b5cf6;
+    background: rgba(139, 92, 246, 0.1);
+  }
+
+  .tf-label {
+    color: white;
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+
+  .tf-term {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .timeframe-badge.intraday .tf-term {
+    color: #f59e0b;
+  }
+
+  .timeframe-badge.swing .tf-term {
+    color: #3b82f6;
+  }
+
+  .timeframe-badge.position .tf-term {
+    color: #8b5cf6;
+  }
+
+  /* Timeframe indicator on pattern cards */
+  .timeframe-indicator {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    display: inline-block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+  }
+
+  .timeframe-indicator.intraday {
+    background: rgba(245, 158, 11, 0.2);
+    color: #f59e0b;
+  }
+
+  .timeframe-indicator.swing {
+    background: rgba(59, 130, 246, 0.2);
+    color: #3b82f6;
+  }
+
+  .timeframe-indicator.position {
+    background: rgba(139, 92, 246, 0.2);
+    color: #8b5cf6;
   }
 
   /* Modal Styles */
@@ -425,7 +566,8 @@
   }
 
   .explanation-section,
-  .advice-section {
+  .advice-section,
+  .timeframe-advice-section {
     background: #2a2a2a;
     border-radius: 12px;
     padding: 1.25rem;
@@ -433,7 +575,8 @@
   }
 
   .explanation-section h4,
-  .advice-section h4 {
+  .advice-section h4,
+  .timeframe-advice-section h4 {
     color: white;
     font-size: 1.125rem;
     margin: 0 0 0.75rem 0;
@@ -443,7 +586,8 @@
   }
 
   .explanation-section p,
-  .advice-section p {
+  .advice-section p,
+  .timeframe-advice-section p {
     color: #e5e7eb;
     line-height: 1.6;
     margin: 0;
@@ -455,6 +599,71 @@
 
   .advice-section p:last-child {
     margin-bottom: 0;
+  }
+
+  /* Timeframe Context Section in Modal */
+  .timeframe-context-section {
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    background: #2a2a2a;
+    border-left: 4px solid #3a3a3a;
+  }
+
+  .timeframe-context-section.intraday {
+    border-left-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.1);
+  }
+
+  .timeframe-context-section.swing {
+    border-left-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.1);
+  }
+
+  .timeframe-context-section.position {
+    border-left-color: #8b5cf6;
+    background: rgba(139, 92, 246, 0.1);
+  }
+
+  .tf-context-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .tf-clock {
+    font-size: 1.25rem;
+  }
+
+  .tf-context-label {
+    font-weight: 700;
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .timeframe-context-section.intraday .tf-context-label {
+    color: #f59e0b;
+  }
+
+  .timeframe-context-section.swing .tf-context-label {
+    color: #3b82f6;
+  }
+
+  .timeframe-context-section.position .tf-context-label {
+    color: #8b5cf6;
+  }
+
+  .tf-context-detail {
+    color: #9ca3af;
+    font-size: 0.875rem;
+  }
+
+  .tf-context-detail strong {
+    color: white;
   }
 
   .disclaimer {
@@ -508,6 +717,55 @@
 
     .learn-more {
       font-size: 0.7rem;
+    }
+
+    /* Mobile timeframe styles */
+    .patterns-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .timeframe-badge {
+      align-items: flex-start;
+      padding: 0.4rem 0.6rem;
+    }
+
+    .tf-label {
+      font-size: 0.8rem;
+    }
+
+    .tf-term {
+      font-size: 0.6rem;
+    }
+
+    .timeframe-indicator {
+      font-size: 0.6rem;
+      padding: 0.15rem 0.4rem;
+    }
+
+    .timeframe-context-section {
+      padding: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .tf-clock {
+      font-size: 1rem;
+    }
+
+    .tf-context-label {
+      font-size: 0.875rem;
+    }
+
+    .tf-context-detail {
+      font-size: 0.75rem;
+    }
+
+    .timeframe-advice-section h4 {
+      font-size: 1rem;
+    }
+
+    .timeframe-advice-section p {
+      font-size: 0.9rem;
     }
 
     .pattern-modal-overlay {
