@@ -2,6 +2,136 @@
   import { patterns, selectedTimeframe } from './stores';
 
   let selectedPattern = null;
+  let showGuide = false;
+
+  // Analyze multiple patterns to provide decision guidance
+  $: patternAnalysis = analyzePatterns($patterns);
+
+  function analyzePatterns(patternList) {
+    if (patternList.length === 0) return null;
+
+    const bullishPatterns = patternList.filter(p => p.direction === 'bullish');
+    const bearishPatterns = patternList.filter(p => p.direction === 'bearish');
+
+    const avgBullishConfidence = bullishPatterns.length > 0
+      ? bullishPatterns.reduce((sum, p) => sum + p.confidence, 0) / bullishPatterns.length
+      : 0;
+    const avgBearishConfidence = bearishPatterns.length > 0
+      ? bearishPatterns.reduce((sum, p) => sum + p.confidence, 0) / bearishPatterns.length
+      : 0;
+
+    const highConfidencePatterns = patternList.filter(p => p.confidence >= 0.7);
+    const conflictingSignals = bullishPatterns.length > 0 && bearishPatterns.length > 0;
+
+    // Determine overall bias
+    let overallBias = 'neutral';
+    let biasStrength = 'weak';
+
+    if (bullishPatterns.length > bearishPatterns.length && avgBullishConfidence > avgBearishConfidence) {
+      overallBias = 'bullish';
+      biasStrength = avgBullishConfidence >= 0.7 ? 'strong' : avgBullishConfidence >= 0.5 ? 'moderate' : 'weak';
+    } else if (bearishPatterns.length > bullishPatterns.length && avgBearishConfidence > avgBullishConfidence) {
+      overallBias = 'bearish';
+      biasStrength = avgBearishConfidence >= 0.7 ? 'strong' : avgBearishConfidence >= 0.5 ? 'moderate' : 'weak';
+    } else if (bullishPatterns.length === bearishPatterns.length) {
+      // Equal count - use confidence to break tie
+      if (avgBullishConfidence > avgBearishConfidence + 0.1) {
+        overallBias = 'bullish';
+        biasStrength = 'weak';
+      } else if (avgBearishConfidence > avgBullishConfidence + 0.1) {
+        overallBias = 'bearish';
+        biasStrength = 'weak';
+      }
+    }
+
+    return {
+      total: patternList.length,
+      bullishCount: bullishPatterns.length,
+      bearishCount: bearishPatterns.length,
+      avgBullishConfidence,
+      avgBearishConfidence,
+      highConfidenceCount: highConfidencePatterns.length,
+      conflictingSignals,
+      overallBias,
+      biasStrength,
+      highestConfidencePattern: patternList.reduce((max, p) => p.confidence > max.confidence ? p : max, patternList[0])
+    };
+  }
+
+  function getDecisionGuidance(analysis) {
+    if (!analysis) return [];
+
+    const guidance = [];
+
+    // Conflicting signals warning
+    if (analysis.conflictingSignals) {
+      guidance.push({
+        type: 'warning',
+        title: 'Conflicting Signals Detected',
+        message: `You have ${analysis.bullishCount} bullish and ${analysis.bearishCount} bearish patterns. This indicates market uncertainty - consider waiting for clearer signals or reducing position size.`
+      });
+    }
+
+    // High confidence pattern highlight
+    if (analysis.highConfidenceCount > 0) {
+      guidance.push({
+        type: 'highlight',
+        title: 'High Confidence Patterns',
+        message: `${analysis.highConfidenceCount} pattern${analysis.highConfidenceCount > 1 ? 's have' : ' has'} confidence above 70%. These deserve more attention in your analysis.`
+      });
+    }
+
+    // Overall bias assessment
+    if (analysis.overallBias !== 'neutral') {
+      const biasText = analysis.biasStrength === 'strong' ? 'Strong' : analysis.biasStrength === 'moderate' ? 'Moderate' : 'Slight';
+      guidance.push({
+        type: analysis.overallBias,
+        title: `${biasText} ${analysis.overallBias.charAt(0).toUpperCase() + analysis.overallBias.slice(1)} Bias`,
+        message: analysis.overallBias === 'bullish'
+          ? `The patterns suggest upward momentum with ${Math.round(analysis.avgBullishConfidence * 100)}% average confidence.`
+          : `The patterns suggest downward pressure with ${Math.round(analysis.avgBearishConfidence * 100)}% average confidence.`
+      });
+    } else {
+      guidance.push({
+        type: 'neutral',
+        title: 'Mixed Signals - No Clear Direction',
+        message: 'The patterns do not show a clear directional bias. Consider staying on the sidelines or using other indicators for confirmation.'
+      });
+    }
+
+    // Decision framework
+    guidance.push({
+      type: 'info',
+      title: 'Decision Framework',
+      message: getDecisionFramework(analysis)
+    });
+
+    return guidance;
+  }
+
+  function getDecisionFramework(analysis) {
+    if (analysis.conflictingSignals && analysis.highConfidenceCount === 0) {
+      return 'With conflicting low-confidence signals, the safest approach is to wait. Look for: (1) patterns to resolve in one direction, (2) volume confirmation, or (3) price action breaking key levels.';
+    }
+
+    if (analysis.conflictingSignals && analysis.highConfidenceCount > 0) {
+      return `Focus on the high-confidence ${analysis.highestConfidencePattern.direction} ${analysis.highestConfidencePattern.pattern_type} pattern (${Math.round(analysis.highestConfidencePattern.confidence * 100)}%). Use tighter stops due to conflicting signals.`;
+    }
+
+    if (analysis.biasStrength === 'strong') {
+      return `Multiple patterns align ${analysis.overallBias}. This is a higher probability setup. Consider: (1) entering with normal position size, (2) setting stops beyond recent swing points, (3) taking partial profits at key levels.`;
+    }
+
+    if (analysis.biasStrength === 'moderate') {
+      return `Patterns lean ${analysis.overallBias} but aren't unanimous. Consider: (1) waiting for one more confirming pattern, (2) entering with reduced size, or (3) using the highest confidence pattern as your primary signal.`;
+    }
+
+    return 'With weak or mixed signals, prioritize capital preservation. Only trade if you see additional confirmation from volume, support/resistance, or other technical indicators.';
+  }
+
+  function toggleGuide() {
+    showGuide = !showGuide;
+  }
 
   // Get human-readable timeframe label with short/long term context
   function getTimeframeLabel(tf) {
@@ -160,6 +290,69 @@
         </button>
       {/each}
     </div>
+
+    {#if sortedPatterns.length > 1}
+      <button class="decision-guide-toggle" on:click={toggleGuide}>
+        {showGuide ? '▼' : '▶'} How to Interpret Multiple Patterns
+      </button>
+
+      {#if showGuide && patternAnalysis}
+        <div class="decision-guide">
+          <div class="guide-header">
+            <h4>Pattern Analysis Summary</h4>
+          </div>
+
+          <div class="pattern-summary">
+            <div class="summary-stat">
+              <span class="stat-value bullish">{patternAnalysis.bullishCount}</span>
+              <span class="stat-label">Bullish</span>
+              {#if patternAnalysis.bullishCount > 0}
+                <span class="stat-confidence">Avg: {Math.round(patternAnalysis.avgBullishConfidence * 100)}%</span>
+              {/if}
+            </div>
+            <div class="summary-divider">vs</div>
+            <div class="summary-stat">
+              <span class="stat-value bearish">{patternAnalysis.bearishCount}</span>
+              <span class="stat-label">Bearish</span>
+              {#if patternAnalysis.bearishCount > 0}
+                <span class="stat-confidence">Avg: {Math.round(patternAnalysis.avgBearishConfidence * 100)}%</span>
+              {/if}
+            </div>
+          </div>
+
+          <div class="guidance-cards">
+            {#each getDecisionGuidance(patternAnalysis) as item}
+              <div class="guidance-card {item.type}">
+                <div class="guidance-title">
+                  {#if item.type === 'warning'}
+                    <span class="guidance-icon">⚠️</span>
+                  {:else if item.type === 'highlight'}
+                    <span class="guidance-icon">⭐</span>
+                  {:else if item.type === 'bullish'}
+                    <span class="guidance-icon">📈</span>
+                  {:else if item.type === 'bearish'}
+                    <span class="guidance-icon">📉</span>
+                  {:else if item.type === 'neutral'}
+                    <span class="guidance-icon">⚖️</span>
+                  {:else}
+                    <span class="guidance-icon">💡</span>
+                  {/if}
+                  {item.title}
+                </div>
+                <div class="guidance-message">{item.message}</div>
+              </div>
+            {/each}
+          </div>
+
+          <div class="guide-footer">
+            <p class="guide-disclaimer">
+              This analysis is for educational purposes only. Always combine pattern analysis with other technical indicators,
+              fundamental analysis, and proper risk management before making trading decisions.
+            </p>
+          </div>
+        </div>
+      {/if}
+    {/if}
   </div>
 {/if}
 
@@ -343,6 +536,170 @@
     font-size: 0.75rem;
     font-style: italic;
     margin-top: 0.5rem;
+  }
+
+  /* Decision Guide Styles */
+  .decision-guide-toggle {
+    width: 100%;
+    background: #2a2a2a;
+    border: 1px solid #3a3a3a;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    color: #3b82f6;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 1rem;
+    text-align: left;
+    transition: all 0.2s;
+  }
+
+  .decision-guide-toggle:hover {
+    background: #333;
+    border-color: #3b82f6;
+  }
+
+  .decision-guide {
+    background: #222;
+    border: 1px solid #3a3a3a;
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-top: 0.75rem;
+  }
+
+  .guide-header h4 {
+    color: white;
+    margin: 0 0 1rem 0;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .pattern-summary {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1.5rem;
+    background: #1a1a1a;
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .summary-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+  }
+
+  .stat-value.bullish {
+    color: #22c55e;
+  }
+
+  .stat-value.bearish {
+    color: #ef4444;
+  }
+
+  .stat-label {
+    color: #9ca3af;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .stat-confidence {
+    color: #6b7280;
+    font-size: 0.75rem;
+  }
+
+  .summary-divider {
+    color: #4b5563;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .guidance-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .guidance-card {
+    background: #2a2a2a;
+    border-radius: 8px;
+    padding: 1rem;
+    border-left: 4px solid #3a3a3a;
+  }
+
+  .guidance-card.warning {
+    border-left-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.1);
+  }
+
+  .guidance-card.highlight {
+    border-left-color: #eab308;
+    background: rgba(234, 179, 8, 0.1);
+  }
+
+  .guidance-card.bullish {
+    border-left-color: #22c55e;
+    background: rgba(34, 197, 94, 0.1);
+  }
+
+  .guidance-card.bearish {
+    border-left-color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+  }
+
+  .guidance-card.neutral {
+    border-left-color: #6b7280;
+    background: rgba(107, 114, 128, 0.1);
+  }
+
+  .guidance-card.info {
+    border-left-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.1);
+  }
+
+  .guidance-title {
+    color: white;
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .guidance-icon {
+    font-size: 1.1rem;
+  }
+
+  .guidance-message {
+    color: #d1d5db;
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  .guide-footer {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #3a3a3a;
+  }
+
+  .guide-disclaimer {
+    color: #6b7280;
+    font-size: 0.75rem;
+    font-style: italic;
+    margin: 0;
+    line-height: 1.5;
   }
 
   /* Patterns Header with Timeframe Badge */
@@ -766,6 +1123,53 @@
 
     .timeframe-advice-section p {
       font-size: 0.9rem;
+    }
+
+    /* Mobile decision guide styles */
+    .decision-guide-toggle {
+      font-size: 0.8rem;
+      padding: 0.6rem 0.75rem;
+    }
+
+    .decision-guide {
+      padding: 1rem;
+    }
+
+    .guide-header h4 {
+      font-size: 1rem;
+    }
+
+    .pattern-summary {
+      gap: 1rem;
+      padding: 0.75rem;
+    }
+
+    .stat-value {
+      font-size: 1.5rem;
+    }
+
+    .stat-label {
+      font-size: 0.7rem;
+    }
+
+    .stat-confidence {
+      font-size: 0.65rem;
+    }
+
+    .guidance-card {
+      padding: 0.75rem;
+    }
+
+    .guidance-title {
+      font-size: 0.85rem;
+    }
+
+    .guidance-message {
+      font-size: 0.8rem;
+    }
+
+    .guide-disclaimer {
+      font-size: 0.7rem;
     }
 
     .pattern-modal-overlay {
